@@ -55,6 +55,65 @@ async def _leave(_, m: types.Message):
         )
 
 
+
+from pyrogram.raw import functions, types as raw_types
+
+async def get_valid_chats(client):
+    chat_ids = set()
+    offset_date = 0
+    offset_id = 0
+    offset_peer = raw_types.InputPeerEmpty()
+    limit = 100
+    
+    while True:
+        try:
+            r = await client.invoke(
+                functions.messages.GetDialogs(
+                    offset_date=offset_date,
+                    offset_id=offset_id,
+                    offset_peer=offset_peer,
+                    limit=limit,
+                    hash=0
+                )
+            )
+        except Exception:
+            break
+            
+        if not getattr(r, 'dialogs', None):
+            break
+            
+        for chat in getattr(r, 'chats', []):
+            if isinstance(chat, raw_types.Channel) and getattr(chat, 'megagroup', False):
+                chat_ids.add(int(f"-100{chat.id}"))
+            elif isinstance(chat, raw_types.Chat):
+                chat_ids.add(-chat.id)
+                
+        last_dialog = r.dialogs[-1]
+        peer = last_dialog.peer
+        
+        if isinstance(peer, raw_types.PeerChannel):
+            access_hash = 0
+            for c in getattr(r, 'chats', []):
+                if isinstance(c, raw_types.Channel) and getattr(c, 'id', 0) == getattr(peer, 'channel_id', 0):
+                    access_hash = getattr(c, 'access_hash', 0)
+                    break
+            offset_peer = raw_types.InputPeerChannel(channel_id=getattr(peer, 'channel_id', 0), access_hash=access_hash)
+        elif isinstance(peer, raw_types.PeerChat):
+            offset_peer = raw_types.InputPeerChat(chat_id=getattr(peer, 'chat_id', 0))
+        elif isinstance(peer, raw_types.PeerUser):
+            access_hash = 0
+            for u in getattr(r, 'users', []):
+                if isinstance(u, raw_types.User) and getattr(u, 'id', 0) == getattr(peer, 'user_id', 0):
+                    access_hash = getattr(u, 'access_hash', 0)
+                    break
+            offset_peer = raw_types.InputPeerUser(user_id=getattr(peer, 'user_id', 0), access_hash=access_hash)
+        else:
+            break
+            
+        offset_id = getattr(last_dialog, 'top_message', 0)
+        
+    return list(chat_ids)
+
 @app.on_message(filters.command(["leaveall"]) & app.sudo_filter)
 @lang.language()
 async def _leaveall(_, m: types.Message):
@@ -74,31 +133,28 @@ async def _leaveall(_, m: types.Message):
     for ub in userbot.clients:
         left = 0
         try:
-            async for dialog in ub.get_dialogs():
-                chat_id = dialog.chat.id
-                
+            chat_ids = await get_valid_chats(ub)
+            for chat_id in chat_ids:
                 # Skip logger and excluded chats
                 excluded = [app.logger] + config.EXCLUDED_CHATS
                 if chat_id in excluded:
                     continue
-                
-                # Only leave groups and supergroups
-                if dialog.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
-                    # Skip if currently in an active call
-                    if chat_id in db.active_calls:
-                        continue
                     
-                    try:
-                        await ub.leave_chat(chat_id)
-                        left += 1
-                        total_left += 1
-                        await asyncio.sleep(1)  # Rate limit
-                    except Exception as e:
-                        logger.debug(f"Failed to leave {chat_id}: {e}")
-                        continue
+                # Skip if currently in an active call
+                if chat_id in db.active_calls:
+                    continue
+                    
+                try:
+                    await ub.leave_chat(chat_id)
+                    left += 1
+                    total_left += 1
+                    await asyncio.sleep(1)  # Rate limit
+                except Exception as e:
+                    logger.debug(f"Failed to leave {chat_id}: {e}")
+                    continue
                         
         except Exception as e:
-            logger.debug(f"Error in leaveall for assistant {ub.me.username if hasattr(ub, 'me') and ub.me else 'Unknown'}: {e}")
+            logger.error(f"Error in leaveall for assistant {ub.me.username if hasattr(ub, 'me') and ub.me else 'Unknown'}: {e}")
             continue
     
     await sent.edit_text(
