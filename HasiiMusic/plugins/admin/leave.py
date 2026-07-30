@@ -98,7 +98,7 @@ async def _leaveall(_, m: types.Message):
                         continue
                         
         except Exception as e:
-            logger.error(f"Error in leaveall for assistant {ub.me.username if hasattr(ub, 'me') and ub.me else 'Unknown'}: {e}")
+            logger.debug(f"Error in leaveall for assistant {ub.me.username if hasattr(ub, 'me') and ub.me else 'Unknown'}: {e}")
             continue
     
     await sent.edit_text(
