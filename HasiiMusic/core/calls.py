@@ -44,7 +44,9 @@ class TgCall(PyTgCalls):
     def __init__(self):
         self.clients = []
         self._chat_locks = {}  # Unified lock to prevent concurrent playback mutations per chat
-        self._stream_end_cache = {}  # Cache to prevent duplicate stream end processing
+        self._session_gen = {}
+        self._track_index = {}
+        self._pending_transitions = set()
 
     def get_lock(self, chat_id: int) -> asyncio.Lock:
         if chat_id not in self._chat_locks:
@@ -90,45 +92,48 @@ class TgCall(PyTgCalls):
             return None
 
     async def pause(self, chat_id: int) -> bool:
-        client = await db.get_assistant(chat_id)
-        try:
-            await client.pause(chat_id)
-            await db.playing(chat_id, paused=True)
-            return True
-        except (ConnectionNotFound, exceptions.NotInCallError):
-            await db.playing(chat_id, paused=False)
-            await db.remove_call(chat_id)
-            queue.clear(chat_id)
-            logger.warning(
-                f"Pause requested but assistant not in call for {chat_id}, syncing state")
-            return False
-        except Exception as e:
-            await db.playing(chat_id, paused=False)
-            logger.error(f"Pause failed for {chat_id}: {e}")
-            return False
+        async with self.get_lock(chat_id):
+            client = await db.get_assistant(chat_id)
+            try:
+                await client.pause(chat_id)
+                await db.playing(chat_id, paused=True)
+                return True
+            except (ConnectionNotFound, exceptions.NotInCallError):
+                await db.playing(chat_id, paused=False)
+                await db.remove_call(chat_id)
+                queue.clear(chat_id)
+                logger.warning(
+                    f"Pause requested but assistant not in call for {chat_id}, syncing state")
+                return False
+            except Exception as e:
+                await db.playing(chat_id, paused=False)
+                logger.error(f"Pause failed for {chat_id}: {e}")
+                return False
 
     async def resume(self, chat_id: int) -> bool:
-        client = await db.get_assistant(chat_id)
-        try:
-            await client.resume(chat_id)
-            await db.playing(chat_id, paused=False)
-            return True
-        except (ConnectionNotFound, exceptions.NotInCallError):
-            await db.playing(chat_id, paused=False)
-            await db.remove_call(chat_id)
-            queue.clear(chat_id)
-            logger.warning(
-                f"Resume requested but assistant not in call for {chat_id}, syncing state")
-            return False
-        except Exception as e:
-            logger.error(f"Resume failed for {chat_id}: {e}")
-            return False
+        async with self.get_lock(chat_id):
+            client = await db.get_assistant(chat_id)
+            try:
+                await client.resume(chat_id)
+                await db.playing(chat_id, paused=False)
+                return True
+            except (ConnectionNotFound, exceptions.NotInCallError):
+                await db.playing(chat_id, paused=False)
+                await db.remove_call(chat_id)
+                queue.clear(chat_id)
+                logger.warning(
+                    f"Resume requested but assistant not in call for {chat_id}, syncing state")
+                return False
+            except Exception as e:
+                logger.error(f"Resume failed for {chat_id}: {e}")
+                return False
 
     async def stop(self, chat_id: int) -> None:
         async with self.get_lock(chat_id):
             await self._stop_impl(chat_id)
 
     async def _stop_impl(self, chat_id: int) -> None:
+        self._session_gen[chat_id] = self._session_gen.get(chat_id, 0) + 1
         client = await db.get_assistant(chat_id)
 
         # Cancel any active preload tasks when stopping
@@ -343,12 +348,23 @@ class TgCall(PyTgCalls):
                     except Exception:
                         pass
 
-                sent_photo = await self._send_photo_with_retry(
-                    chat_id=chat_id,
-                    photo=_thumb,
-                    caption=text,
-                    reply_markup=keyboard,
-                )
+                lock = self.get_lock(chat_id)
+                current_session = self._session_gen.get(chat_id, 0)
+                lock.release()
+                try:
+                    sent_photo = await self._send_photo_with_retry(
+                        chat_id=chat_id,
+                        photo=_thumb,
+                        caption=text,
+                        reply_markup=keyboard,
+                    )
+                finally:
+                    await lock.acquire()
+                    
+                if self._session_gen.get(chat_id, 0) != current_session:
+                    logger.info(f"Session invalidated during send_photo for {chat_id}")
+                    return
+
                 if sent_photo:
                     media.message_id = sent_photo.id
 
@@ -472,15 +488,15 @@ class TgCall(PyTgCalls):
             logger.warning(f"Seek stream failed for {chat_id}: {e}")
             return False
 
-    async def play_next(self, chat_id: int) -> None:
+    async def play_next(self, chat_id: int, expected_index: int = None) -> None:
         lock = self.get_lock(chat_id)
-
-        if lock.locked():
-            logger.info(
-                f"play_next already running for {chat_id}, skipping duplicate call")
-            return
-
         async with lock:
+            self._pending_transitions.discard(chat_id)
+            if expected_index is not None and self._track_index.get(chat_id, 0) != expected_index:
+                logger.info(f"Skipping stale play_next for {chat_id}")
+                return
+            
+            self._track_index[chat_id] = self._track_index.get(chat_id, 0) + 1
             await self._play_next_impl(chat_id)
 
     async def _play_next_impl(self, chat_id: int) -> None:
@@ -518,13 +534,25 @@ class TgCall(PyTgCalls):
                         try:
                             msg = await app.send_message(chat_id=chat_id, text="🔁 Looping queue...")
                             if not first_track.file_path:
-                                is_live = getattr(
-                                    first_track, 'is_live', False)
-                                first_track.file_path = await yt.download(
-                                    first_track.id,
-                                    is_live=is_live,
-                                    video=getattr(first_track, 'video', False),
-                                )
+                                is_live = getattr(first_track, 'is_live', False)
+                                lock = self.get_lock(chat_id)
+                                current_session = self._session_gen.get(chat_id, 0)
+                                lock.release()
+                                try:
+                                    first_track.file_path = await yt.download(
+                                        first_track.id,
+                                        is_live=is_live,
+                                        video=getattr(first_track, 'video', False),
+                                    )
+                                finally:
+                                    await lock.acquire()
+                                
+                                if self._session_gen.get(chat_id, 0) != current_session:
+                                    logger.info(f"Session invalidated during looping download for {chat_id}")
+                                    return
+                                if queue.get_current(chat_id) != first_track:
+                                    logger.info(f"Queue altered during looping download for {chat_id}")
+                                    return
                             first_track.message_id = msg.id
                             await self._play_media_impl(chat_id, msg, first_track)
                         except errors.ChannelPrivate:
@@ -564,11 +592,24 @@ class TgCall(PyTgCalls):
                 msg = None
                 if not media.file_path:
                     is_live = getattr(media, 'is_live', False)
-                    media.file_path = await yt.download(
-                        media.id,
-                        is_live=is_live,
-                        video=getattr(media, 'video', False),
-                    )
+                    lock = self.get_lock(chat_id)
+                    current_session = self._session_gen.get(chat_id, 0)
+                    lock.release()
+                    try:
+                        media.file_path = await yt.download(
+                            media.id,
+                            is_live=is_live,
+                            video=getattr(media, 'video', False),
+                        )
+                    finally:
+                        await lock.acquire()
+
+                    if self._session_gen.get(chat_id, 0) != current_session:
+                        logger.info(f"Session invalidated during play_next download for {chat_id}")
+                        return
+                    if queue.get_current(chat_id) != media:
+                        logger.info(f"Queue altered during play_next download for {chat_id}")
+                        return
                     if not media.file_path:
                         await self._stop_impl(chat_id)
                         if msg:
@@ -632,20 +673,10 @@ class TgCall(PyTgCalls):
                     if isinstance(update, types.StreamEnded):
                         if update.stream_type == types.StreamEnded.Type.AUDIO:
                             chat_id = update.chat_id
-                            current_time = asyncio.get_event_loop().time()
-
-                            if chat_id in self._stream_end_cache:
-                                if current_time - self._stream_end_cache[chat_id] < 2.0:
-                                    return
-
-                            self._stream_end_cache[chat_id] = current_time
-
-                            self._stream_end_cache = {
-                                cid: t for cid, t in self._stream_end_cache.items()
-                                if current_time - t < 5.0
-                            }
-
-                            await self._play_next_impl(chat_id)
+                            expected_index = self._track_index.get(chat_id, 0)
+                            if chat_id not in self._pending_transitions:
+                                self._pending_transitions.add(chat_id)
+                                asyncio.create_task(self.play_next(chat_id, expected_index))
                     elif isinstance(update, types.ChatUpdate):
                         if update.status in [
                             types.ChatUpdate.Status.KICKED,

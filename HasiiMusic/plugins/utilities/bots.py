@@ -44,4 +44,8 @@ async def list_bots(client, message: Message):
         await status_msg.edit_text(response, disable_web_page_preview=True, parse_mode=ParseMode.HTML)
         
     except Exception as e:
-        await message.reply_text(f"⚠️ <b>Error:</b> {str(e)}", parse_mode=ParseMode.HTML)
+        if "FLOOD_WAIT" not in str(e):
+            try:
+                await message.reply_text(f"⚠️ <b>Error:</b> {str(e)}", parse_mode=ParseMode.HTML)
+            except:
+                pass

@@ -19,7 +19,11 @@ async def roll_dice(bot, message):
         m = x.dice.value
         await message.reply_text(f"🎲 {message.from_user.mention} rolled: {m}", quote=True)
     except Exception as e:
-        await message.reply_text(f"❌ Error: {str(e)}")
+        if "FLOOD_WAIT" not in str(e):
+            try:
+                await message.reply_text(f"❌ Error: {str(e)}")
+            except:
+                pass
 
 
 @app.on_message(filters.dice)
@@ -29,7 +33,11 @@ async def dice_emoji_handler(bot, message):
         emoji = message.dice.emoji
         await message.reply_text(f"{emoji} {message.from_user.mention} scored: {m}", quote=True)
     except Exception as e:
-        await message.reply_text(f"❌ Error: {str(e)}")
+        if "FLOOD_WAIT" not in str(e):
+            try:
+                await message.reply_text(f"❌ Error: {str(e)}")
+            except:
+                pass
 
 
 # Jackpot 🎰
@@ -44,7 +52,11 @@ async def spin_jackpot(bot, message):
         m = x.dice.value
         await message.reply_text(f"🎰 Hey {message.from_user.mention}, your score is: {m}", quote=True)
     except Exception as e:
-        await message.reply_text(f"❌ Error: {str(e)}")
+        if "FLOOD_WAIT" not in str(e):
+            try:
+                await message.reply_text(f"❌ Error: {str(e)}")
+            except:
+                pass
 
 
 # Darts 🎯
@@ -59,7 +71,11 @@ async def throw_dart(bot, message):
         m = x.dice.value
         await message.reply_text(f"🎯 Hey {message.from_user.mention}, your score is: {m}", quote=True)
     except Exception as e:
-        await message.reply_text(f"❌ Error: {str(e)}")
+        if "FLOOD_WAIT" not in str(e):
+            try:
+                await message.reply_text(f"❌ Error: {str(e)}")
+            except:
+                pass
 
 
 # Basketball 🏀
@@ -74,7 +90,11 @@ async def shoot_basket(bot, message):
         m = x.dice.value
         await message.reply_text(f"🏀 Hey {message.from_user.mention}, your score is: {m}", quote=True)
     except Exception as e:
-        await message.reply_text(f"❌ Error: {str(e)}")
+        if "FLOOD_WAIT" not in str(e):
+            try:
+                await message.reply_text(f"❌ Error: {str(e)}")
+            except:
+                pass
 
 
 # Bowling Ball 🎳
@@ -89,7 +109,11 @@ async def roll_ball(bot, message):
         m = x.dice.value
         await message.reply_text(f"🎳 Hey {message.from_user.mention}, your score is: {m}", quote=True)
     except Exception as e:
-        await message.reply_text(f"❌ Error: {str(e)}")
+        if "FLOOD_WAIT" not in str(e):
+            try:
+                await message.reply_text(f"❌ Error: {str(e)}")
+            except:
+                pass
 
 
 # Football ⚽
@@ -104,5 +128,9 @@ async def kick_football(bot, message):
         m = x.dice.value
         await message.reply_text(f"⚽ Hey {message.from_user.mention}, your score is: {m}", quote=True)
     except Exception as e:
-        await message.reply_text(f"❌ Error: {str(e)}")
+        if "FLOOD_WAIT" not in str(e):
+            try:
+                await message.reply_text(f"❌ Error: {str(e)}")
+            except:
+                pass
 
