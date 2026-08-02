@@ -5,10 +5,11 @@
 # ==============================================================================
 
 from pyrogram import filters
-from HasiiMusic import app
+from HasiiMusic import app, lang
 
 # Dice 🎲
 @app.on_message(filters.command("dice"))
+@lang.language()
 async def roll_dice(bot, message):
     try:
         await message.delete()
@@ -17,31 +18,33 @@ async def roll_dice(bot, message):
     try:
         x = await bot.send_dice(message.chat.id, "🎲")
         m = x.dice.value
-        await message.reply_text(f"🎲 {message.from_user.mention} rolled: {m}", quote=True)
+        await message.reply_text(message.lang["dice_rolled"].format(message.from_user.mention, m), quote=True)
     except Exception as e:
         if "FLOOD_WAIT" not in str(e):
             try:
-                await message.reply_text(f"❌ Error: {str(e)}")
+                await message.reply_text(message.lang["dice_error"].format(str(e)))
             except:
                 pass
 
 
 @app.on_message(filters.dice)
+@lang.language()
 async def dice_emoji_handler(bot, message):
     try:
         m = message.dice.value
         emoji = message.dice.emoji
-        await message.reply_text(f"{emoji} {message.from_user.mention} scored: {m}", quote=True)
+        await message.reply_text(message.lang["dice_scored"].format(emoji, message.from_user.mention, m), quote=True)
     except Exception as e:
         if "FLOOD_WAIT" not in str(e):
             try:
-                await message.reply_text(f"❌ Error: {str(e)}")
+                await message.reply_text(message.lang["dice_error"].format(str(e)))
             except:
                 pass
 
 
 # Jackpot 🎰
 @app.on_message(filters.command("jackpot"))
+@lang.language()
 async def spin_jackpot(bot, message):
     try:
         await message.delete()
@@ -50,18 +53,19 @@ async def spin_jackpot(bot, message):
     try:
         x = await bot.send_dice(message.chat.id, "🎰")
         m = x.dice.value
-        await message.reply_text(f"🎰 Hey {message.from_user.mention}, your score is: {m}", quote=True)
+        await message.reply_text(message.lang["dice_jackpot"].format(message.from_user.mention, m), quote=True)
     except Exception as e:
         if "FLOOD_WAIT" not in str(e):
             try:
-                await message.reply_text(f"❌ Error: {str(e)}")
+                await message.reply_text(message.lang["dice_error"].format(str(e)))
             except:
                 pass
 
 
 # Darts 🎯
 @app.on_message(filters.command("dart"))
-async def throw_dart(bot, message):
+@lang.language()
+async def dart_game(bot, message):
     try:
         await message.delete()
     except Exception:
@@ -69,18 +73,19 @@ async def throw_dart(bot, message):
     try:
         x = await bot.send_dice(message.chat.id, "🎯")
         m = x.dice.value
-        await message.reply_text(f"🎯 Hey {message.from_user.mention}, your score is: {m}", quote=True)
+        await message.reply_text(message.lang["dice_dart"].format(message.from_user.mention, m), quote=True)
     except Exception as e:
         if "FLOOD_WAIT" not in str(e):
             try:
-                await message.reply_text(f"❌ Error: {str(e)}")
+                await message.reply_text(message.lang["dice_error"].format(str(e)))
             except:
                 pass
 
 
 # Basketball 🏀
 @app.on_message(filters.command("basket"))
-async def shoot_basket(bot, message):
+@lang.language()
+async def basket_game(bot, message):
     try:
         await message.delete()
     except Exception:
@@ -88,18 +93,19 @@ async def shoot_basket(bot, message):
     try:
         x = await bot.send_dice(message.chat.id, "🏀")
         m = x.dice.value
-        await message.reply_text(f"🏀 Hey {message.from_user.mention}, your score is: {m}", quote=True)
+        await message.reply_text(message.lang["dice_basket"].format(message.from_user.mention, m), quote=True)
     except Exception as e:
         if "FLOOD_WAIT" not in str(e):
             try:
-                await message.reply_text(f"❌ Error: {str(e)}")
+                await message.reply_text(message.lang["dice_error"].format(str(e)))
             except:
                 pass
 
 
 # Bowling Ball 🎳
 @app.on_message(filters.command("ball"))
-async def roll_ball(bot, message):
+@lang.language()
+async def ball_game(bot, message):
     try:
         await message.delete()
     except Exception:
@@ -107,18 +113,19 @@ async def roll_ball(bot, message):
     try:
         x = await bot.send_dice(message.chat.id, "🎳")
         m = x.dice.value
-        await message.reply_text(f"🎳 Hey {message.from_user.mention}, your score is: {m}", quote=True)
+        await message.reply_text(message.lang["dice_ball"].format(message.from_user.mention, m), quote=True)
     except Exception as e:
         if "FLOOD_WAIT" not in str(e):
             try:
-                await message.reply_text(f"❌ Error: {str(e)}")
+                await message.reply_text(message.lang["dice_error"].format(str(e)))
             except:
                 pass
 
 
 # Football ⚽
 @app.on_message(filters.command("football"))
-async def kick_football(bot, message):
+@lang.language()
+async def football_game(bot, message):
     try:
         await message.delete()
     except Exception:
@@ -126,11 +133,11 @@ async def kick_football(bot, message):
     try:
         x = await bot.send_dice(message.chat.id, "⚽")
         m = x.dice.value
-        await message.reply_text(f"⚽ Hey {message.from_user.mention}, your score is: {m}", quote=True)
+        await message.reply_text(message.lang["dice_football"].format(message.from_user.mention, m), quote=True)
     except Exception as e:
         if "FLOOD_WAIT" not in str(e):
             try:
-                await message.reply_text(f"❌ Error: {str(e)}")
+                await message.reply_text(message.lang["dice_error"].format(str(e)))
             except:
                 pass
 

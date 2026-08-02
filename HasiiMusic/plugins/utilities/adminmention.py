@@ -7,15 +7,16 @@
 import re
 from pyrogram import filters, types, enums
 
-from HasiiMusic import app, config
+from HasiiMusic import app, config, lang
 
 
 # Pattern to detect admin triggers
 TRIGGER_PATTERN = re.compile(r"(?i)(\.|@|\/)admin")
 
 
-@app.on_message(filters.group & filters.regex(r"(?i)(\.|@|\/)admin"))
-async def mention_admins(_, message: types.Message):
+@app.on_message(filters.command(["admin", "admins", "report"]) & filters.group)
+@lang.language()
+async def tag_admins(client, message: types.Message):
     try:
         # Extract the message without the trigger
         message_text = message.text or message.caption or ""
@@ -93,6 +94,6 @@ async def mention_admins(_, message: types.Message):
     except Exception as e:
         # Catch all exceptions to prevent bot crashes
         try:
-            await message.reply_text("<blockquote>❌ An error occurred while processing admin mention.</blockquote>")
+            await message.reply_text(message.lang["admin_mention_error"])
         except:
             pass  # Silent failure if reply fails

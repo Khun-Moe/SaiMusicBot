@@ -27,32 +27,26 @@ async def _loop(_, m: types.Message):
         mode_arg = m.command[1].lower()
         if mode_arg in ["0", "disable"]:
             new_loop = 0
-            text = "<blockquote>➡️ Loop mode disabled</blockquote>"
+            text = m.lang["loop_disabled"]
         elif mode_arg in ["single", "1", "one"]:
             new_loop = 1
-            text = "<blockquote>🔂 Loop mode set to Single Track</blockquote>"
+            text = m.lang["loop_single"]
         elif mode_arg in ["queue", "all", "10"]:
             new_loop = 10
-            text = "<blockquote>🔁 Loop mode set to Queue</blockquote>"
+            text = m.lang["loop_queue_set"]
         else:
-            return await m.reply_text(
-                "<blockquote><b>Usage:</b>\n"
-                "• /loop - Cycle through modes\n"
-                "• /loop disable - Disable loop\n"
-                "• /loop single - Loop current track\n"
-                "• /loop queue - Loop entire queue</blockquote>"
-            )
+            return await m.reply_text(m.lang["loop_usage"])
     else:
         # Cycle through modes
         if current_loop == 0:
             new_loop = 1
-            text = "<blockquote>🔂 Loop mode set to Single Track</blockquote>"
+            text = m.lang["loop_single"]
         elif current_loop == 1:
             new_loop = 10
-            text = "<blockquote>🔁 Loop mode set to Queue</blockquote>"
+            text = m.lang["loop_queue_set"]
         else:
             new_loop = 0
-            text = "<blockquote>➡️ Loop mode disabled</blockquote>"
+            text = m.lang["loop_disabled"]
     
     await db.set_loop(m.chat.id, new_loop)
     await m.reply_text(text)

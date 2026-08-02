@@ -8,10 +8,11 @@ from pyrogram import filters
 from pyrogram.types import Message
 from pyrogram.enums import ChatMembersFilter, ParseMode
 
-from HasiiMusic import app
+from HasiiMusic import app, lang
 
 
 @app.on_message(filters.command("bots") & filters.group)
+@lang.language()
 async def list_bots(client, message: Message):
     # Auto-delete command message
     try:
@@ -24,7 +25,7 @@ async def list_bots(client, message: Message):
         bot_count = 0
         
         # Send initial message
-        status_msg = await message.reply_text("🔍 <b>Scanning for bots...</b>", parse_mode=ParseMode.HTML)
+        status_msg = await message.reply_text(message.lang["bots_scanning"], parse_mode=ParseMode.HTML)
         
         # Iterate through all members and filter bots
         async for member in client.get_chat_members(message.chat.id, filter=ChatMembersFilter.BOTS):
@@ -33,19 +34,19 @@ async def list_bots(client, message: Message):
             bot_list.append(f"{bot_count}. <a href='tg://user?id={member.user.id}'>{member.user.first_name}</a> - {bot_username}")
         
         if bot_count == 0:
-            await status_msg.edit_text("❌ <b>No bots found in this group.</b>", parse_mode=ParseMode.HTML)
+            await status_msg.edit_text(message.lang["bots_none"], parse_mode=ParseMode.HTML)
             return
         
         # Format the response
-        response = f"🤖 <b>Bots in {message.chat.title}</b>\n\n"
+        response = message.lang["bots_title"].format(message.chat.title)
         response += "<blockquote>" + "\n".join(bot_list) + "</blockquote>"
-        response += f"\n\n📊 <b>Total Bots:</b> {bot_count}"
+        response += message.lang["bots_total"].format(bot_count)
         
         await status_msg.edit_text(response, disable_web_page_preview=True, parse_mode=ParseMode.HTML)
         
     except Exception as e:
         if "FLOOD_WAIT" not in str(e):
             try:
-                await message.reply_text(f"⚠️ <b>Error:</b> {str(e)}", parse_mode=ParseMode.HTML)
+                await message.reply_text(message.lang["bots_error"].format(str(e)), parse_mode=ParseMode.HTML)
             except:
                 pass

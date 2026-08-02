@@ -30,9 +30,9 @@ async def _blacklist_chat(_, m: types.Message):
         chat_id = int(m.command[1])
         chat = await app.get_chat(chat_id)
     except ValueError:
-        return await m.reply_text("<blockquote>❌ Invalid chat ID</blockquote>")
+        return await m.reply_text(m.lang["bl_invalid_chat"])
     except Exception:
-        return await m.reply_text("<blockquote>❌ Chat not found</blockquote>")
+        return await m.reply_text(m.lang["bl_chat_not_found"])
 
     if chat_id in db.blacklisted:
         return await m.reply_text(
@@ -70,7 +70,7 @@ async def _whitelist_chat(_, m: types.Message):
         except:
             chat_name = f"Chat {chat_id}"
     except ValueError:
-        return await m.reply_text("<blockquote>❌ Invalid chat ID</blockquote>")
+        return await m.reply_text(m.lang["bl_invalid_chat"])
 
     if chat_id not in db.blacklisted:
         return await m.reply_text(
@@ -94,7 +94,7 @@ async def _blacklisted_chats(_, m: types.Message):
     except Exception:
         pass
     
-    sent = await m.reply_text("📋 Fetching blacklisted chats...")
+    sent = await m.reply_text(m.lang["bl_fetching_chats"])
     
     blacklisted = await db.get_blacklisted(chat=True)
     
@@ -102,7 +102,7 @@ async def _blacklisted_chats(_, m: types.Message):
     chats_list = [chat_id for chat_id in blacklisted if chat_id < 0]
     
     if not chats_list:
-        return await sent.edit_text("<blockquote>✅ No chats are blacklisted</blockquote>")
+        return await sent.edit_text(m.lang["bl_no_chats"])
     
     text = "<u><b>🚫 ʙʟᴀᴄᴋʟɪꜱᴛᴇᴅ ᴄʜᴀᴛꜱ:</b></u>\n<blockquote>"
     
@@ -140,9 +140,9 @@ async def _block_user(_, m: types.Message):
             user = await app.get_users(user_id)
             user_mention = user.mention
         except ValueError:
-            return await m.reply_text("<blockquote>❌ Invalid user ID</blockquote>")
+            return await m.reply_text(m.lang["bl_invalid_user"])
         except Exception:
-            return await m.reply_text("<blockquote>❌ User not found</blockquote>")
+            return await m.reply_text(m.lang["bl_user_not_found"])
     else:
         return await m.reply_text(
             "<blockquote><b>ᴜꜱᴀɢᴇ:</b>\n"
@@ -152,7 +152,7 @@ async def _block_user(_, m: types.Message):
     
     # Don't allow blocking sudo users
     if user_id in app.sudoers:
-        return await m.reply_text("<blockquote>❌ Cannot block sudo users</blockquote>")
+        return await m.reply_text(m.lang["bl_sudo_error"])
     
     if user_id in app.bl_users:
         return await m.reply_text(
@@ -189,7 +189,7 @@ async def _unblock_user(_, m: types.Message):
             user = await app.get_users(user_id)
             user_mention = user.mention
         except ValueError:
-            return await m.reply_text("<blockquote>❌ Invalid user ID</blockquote>")
+            return await m.reply_text(m.lang["bl_invalid_user"])
         except Exception:
             user_mention = f"User {user_id}"
     else:
@@ -222,12 +222,12 @@ async def _blocked_users(_, m: types.Message):
     except Exception:
         pass
     
-    sent = await m.reply_text("📋 Fetching blocked users...")
+    sent = await m.reply_text(m.lang["bl_fetching_users"])
     
     blacklisted = await db.get_blacklisted()
     
     if not blacklisted:
-        return await sent.edit_text("<blockquote>✅ No users are blocked</blockquote>")
+        return await sent.edit_text(m.lang["bl_no_users"])
     
     text = "<u><b>🚫 ʙʟᴏᴄᴋᴇᴅ ᴜꜱᴇʀꜱ:</b></u>\n<blockquote>"
     

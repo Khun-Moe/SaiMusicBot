@@ -58,4 +58,4 @@ async def _seek(_, m: types.Message):
             m.lang["play_seeked"].format(stype, start_from, m.from_user.mention)
         )
     else:
-        await sent.edit_text("❌ Failed to seek!")
+        await sent.edit_text(m.lang["seek_failed"])
