@@ -51,7 +51,7 @@ class YouTube:
             if not path.endswith((".part", ".ytdl", ".info.json", ".temp"))
         ])
 
-        video_exts = {".mp4", ".mkv", ".webm", ".mov"}
+        video_exts = {".mp4", ".mkv", ".mov"}
         audio_exts = {".m4a", ".webm", ".opus", ".mp3", ".ogg", ".wav", ".flac"}
 
         if video:
@@ -359,9 +359,11 @@ class YouTube:
             if not f.endswith('.part')
         ]
         if video:
+            # NOTE: .webm excluded — audio downloads from /play produce .webm
+            # which are audio-only. Only trust .mp4/.mkv/.mov as cached video.
             video_candidates = [
                 f for f in existing_files
-                if Path(f).suffix.lower() in {".mp4", ".mkv", ".webm", ".mov"}
+                if Path(f).suffix.lower() in {".mp4", ".mkv", ".mov"}
             ]
             if video_candidates:
                 return video_candidates[0]

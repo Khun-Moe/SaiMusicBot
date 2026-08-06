@@ -72,7 +72,8 @@ class Config:
         self.THUMB_GEN: bool = self._str_to_bool(getenv("THUMB_GEN", "True"))
         # Enable/disable video playback commands (/vplay)
         self.VIDEO_PLAY: bool = self._str_to_bool(getenv("VIDEO_PLAY", "False"))
-        # Maximum video height (in pixels) when downloading /vplay media
+        # Maximum video height (pixels) for /vplay download AND playback
+        # Lower = less CPU usage. Recommended: 480 for 100+ groups
         self.VIDEO_MAX_HEIGHT: int = self._parse_video_height()
 
         # ============ YOUTUBE COOKIES ============
@@ -97,8 +98,8 @@ class Config:
         self.EXCLUDED_USERNAMES: List[str] = getenv("EXCLUDED_USERNAMES", "").split()
 
     def _parse_video_height(self) -> int:
-        """Clamp configured video height to a safe HD range."""
-        default_height = 1080
+        """Clamp configured video height to a safe range."""
+        default_height = 480
         raw_value = getenv("VIDEO_MAX_HEIGHT", str(default_height))
         try:
             height = int(raw_value)
@@ -109,8 +110,8 @@ class Config:
         if height <= 0:
             return 0
 
-        # Clamp between 480p and 2160p to avoid unrealistic requests
-        return max(480, min(height, 2160))
+        # Clamp between 360p and 1080p
+        return max(360, min(height, 1080))
 
     def _parse_excluded_chats(self) -> List[int]:
         excluded = getenv("EXCLUDED_CHATS", "")

@@ -243,13 +243,31 @@ class TgCall(PyTgCalls):
             else types.MediaStream.Flags.IGNORE
         )
 
-        stream = types.MediaStream(
-            media_path=media.file_path,
-            audio_parameters=types.AudioQuality.STUDIO,
-            audio_flags=types.MediaStream.Flags.REQUIRED,
-            video_flags=video_flags,
-            ffmpeg_parameters=ffmpeg_params,
-        )
+        kwargs = {
+            "media_path": media.file_path,
+            "audio_parameters": types.AudioQuality.STUDIO,
+            "audio_flags": types.MediaStream.Flags.REQUIRED,
+            "video_flags": video_flags,
+            "ffmpeg_parameters": ffmpeg_params,
+        }
+        
+        if is_video:
+            # Use VIDEO_MAX_HEIGHT from .env for playback resolution
+            # Lower resolution + FPS = significantly less CPU usage
+            h = config.VIDEO_MAX_HEIGHT or 720
+            if h <= 360:
+                w, fps = 640, 15
+            elif h <= 480:
+                w, fps = 854, 20
+            elif h <= 720:
+                w, fps = 1280, 25
+            else:
+                w, fps = 1920, 30
+            kwargs["video_parameters"] = types.raw.VideoParameters(
+                width=w, height=h, frame_rate=fps,
+            )
+            
+        stream = types.MediaStream(**kwargs)
 
         try:
             # ALWAYS attempt to leave the call before starting a new stream to clear ghost streams
